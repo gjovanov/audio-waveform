@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Waveform Extractor</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Audio Waveform Extractor</h1>
+      <p class="subtitle">Extract audio from video files and visualize waveforms — entirely in the browser</p>
+    </header>
+
+    <!-- File Upload -->
+    <section id="upload-section">
+      <div id="drop-zone">
+        <p>Drag &amp; drop a video file here</p>
+        <p class="small">or</p>
+        <label class="file-btn">
+          Choose File
+          <input type="file" id="file-input" accept="video/*" hidden>
+        </label>
+        <p class="small">Supports MP4, MKV, WebM, MOV (up to 5GB)</p>
+      </div>
+      <div id="upload-progress" class="progress-container" hidden>
+        <p id="upload-status">Storing file...</p>
+        <div class="progress-bar"><div id="upload-bar" class="progress-fill"></div></div>
+        <p id="upload-detail" class="small"></p>
+      </div>
+    </section>
+
+    <!-- Stored Files -->
+    <section id="files-section" hidden>
+      <h2>Stored Files</h2>
+      <ul id="file-list"></ul>
+    </section>
+
+    <!-- Processing -->
+    <section id="processing-section" hidden>
+      <h2>Processing</h2>
+      <div id="extract-progress" class="progress-container">
+        <p id="extract-status">Initializing ffmpeg...</p>
+        <div class="progress-bar"><div id="extract-bar" class="progress-fill"></div></div>
+        <p id="extract-detail" class="small"></p>
+      </div>
+      <div id="analyze-progress" class="progress-container" hidden>
+        <p id="analyze-status">Analyzing audio...</p>
+        <div class="progress-bar"><div id="analyze-bar" class="progress-fill"></div></div>
+        <p id="analyze-detail" class="small"></p>
+      </div>
+    </section>
+
+    <!-- Waveform -->
+    <section id="waveform-section" hidden>
+      <h2>Waveform</h2>
+      <div id="waveform-container">
+        <canvas id="waveform-canvas"></canvas>
+        <div id="cursor" class="cursor"></div>
+      </div>
+      <div id="waveform-controls">
+        <button id="play-btn" title="Play/Pause">&#9654; Play</button>
+        <span id="time-display">0:00 / 0:00</span>
+        <div class="zoom-controls">
+          <button id="zoom-in-btn" title="Zoom In">+</button>
+          <button id="zoom-out-btn" title="Zoom Out">&minus;</button>
+          <button id="zoom-fit-btn" title="Fit">Fit</button>
+        </div>
+      </div>
+      <audio id="audio-player" hidden></audio>
+    </section>
+
+    <!-- Status Log -->
+    <section id="log-section">
+      <h2>Log</h2>
+      <div id="log"></div>
+    </section>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

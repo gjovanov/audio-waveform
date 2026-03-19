@@ -1,0 +1,9 @@
+{
+  "name": "audio-waveform",
+  "version": "1.0.0",
+  "description": "Browser-based audio extraction and waveform visualization from large video files",
+  "scripts": {
+    "start": "node server.js",
+    "start:bun": "bun server.bun.js"
+  }
+}

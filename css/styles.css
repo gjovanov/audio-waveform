@@ -1,0 +1,245 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+#app {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  color: #fff;
+}
+
+h2 {
+  font-size: 1.2rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+.small {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+/* Drop Zone */
+#drop-zone {
+  border: 2px dashed #444;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+#drop-zone.dragover {
+  border-color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.05);
+}
+
+#drop-zone p {
+  margin: 0.5rem 0;
+}
+
+.file-btn {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  background: #4fc3f7;
+  color: #1a1a2e;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.file-btn:hover {
+  background: #81d4fa;
+}
+
+/* Progress */
+.progress-container {
+  margin: 1rem 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4fc3f7;
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.2s;
+}
+
+/* File List */
+#file-list {
+  list-style: none;
+}
+
+#file-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #16213e;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+#file-list .file-info {
+  flex: 1;
+}
+
+#file-list .file-name {
+  font-weight: 600;
+}
+
+#file-list .file-size {
+  font-size: 0.85rem;
+  color: #888;
+  margin-left: 0.5rem;
+}
+
+#file-list button {
+  margin-left: 0.5rem;
+}
+
+button {
+  padding: 0.4rem 1rem;
+  background: #4fc3f7;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #81d4fa;
+}
+
+button.danger {
+  background: #ef5350;
+  color: #fff;
+}
+
+button.danger:hover {
+  background: #f44336;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Waveform */
+#waveform-container {
+  position: relative;
+  background: #0f3460;
+  border-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 200px;
+}
+
+#waveform-canvas {
+  display: block;
+  height: 200px;
+}
+
+.cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: #ff6b6b;
+  pointer-events: none;
+  display: none;
+}
+
+#waveform-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+#time-display {
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.zoom-controls button {
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+}
+
+/* Log */
+#log {
+  background: #0a0a1a;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+#log .log-entry {
+  border-bottom: 1px solid #1a1a2e;
+  padding: 2px 0;
+}
+
+#log .log-entry.error {
+  color: #ef5350;
+}
+
+#log .log-entry.warn {
+  color: #ffa726;
+}
+
+#log .log-entry.success {
+  color: #66bb6a;
+}

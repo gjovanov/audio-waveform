@@ -1,0 +1,10 @@
+node_modules/
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.avi
+*.aac
+*.wav
+*.mp3
+.DS_Store

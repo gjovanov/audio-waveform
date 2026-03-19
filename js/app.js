@@ -170,11 +170,6 @@ async function processFile(meta) {
     const videoBlob = await getFileAsBlob(meta.id);
     log(`Read from IndexedDB: ${formatBytes(videoBlob.size)}`);
 
-    // Check if file might be too large for WASM
-    if (videoBlob.size > 2 * 1024 * 1024 * 1024) {
-      log('File is >2GB — this may fail due to WASM memory limits. Attempting anyway...', 'warn');
-    }
-
     // Step 3: Extract audio
     extractStatus.textContent = 'Extracting audio track...';
     setProgress(extractBar, 10);

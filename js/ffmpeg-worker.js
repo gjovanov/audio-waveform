@@ -8,7 +8,9 @@ import { log } from './utils.js';
 let ffmpeg = null;
 let loaded = false;
 
-const FFMPEG_CORE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+const BASE = '/node_modules/@ffmpeg';
+const CORE_URL = `${BASE}/core/dist/esm`;
+const CORE_UMD_URL = `${BASE}/core/dist/umd`;
 
 /**
  * Load ffmpeg.wasm. Must be called before extractAudio.
@@ -19,8 +21,7 @@ export async function loadFFmpeg(onProgress) {
 
   log('Loading ffmpeg.wasm...');
 
-  // Dynamic import from CDN
-  const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+  const { FFmpeg } = await import(`${BASE}/ffmpeg/dist/esm/index.js`);
 
   ffmpeg = new FFmpeg();
 
@@ -34,25 +35,61 @@ export async function loadFFmpeg(onProgress) {
     });
   }
 
-  // Try multi-threaded first, fall back to single-threaded
+  // Try multi-threaded (requires SharedArrayBuffer + COOP/COEP), fall back to single-threaded
   try {
     await ffmpeg.load({
-      coreURL: `${FFMPEG_CORE_URL}/ffmpeg-core.js`,
-      wasmURL: `${FFMPEG_CORE_URL}/ffmpeg-core.wasm`,
-      workerURL: `${FFMPEG_CORE_URL}/ffmpeg-core.worker.js`,
+      coreURL: `${CORE_URL}/ffmpeg-core.js`,
+      wasmURL: `${CORE_URL}/ffmpeg-core.wasm`,
     });
     log('ffmpeg.wasm loaded (multi-threaded)', 'success');
   } catch (e) {
     log(`Multi-threaded load failed: ${e.message}. Trying single-threaded...`, 'warn');
-    const ST_URL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
     await ffmpeg.load({
-      coreURL: `${ST_URL}/ffmpeg-core.js`,
-      wasmURL: `${ST_URL}/ffmpeg-core.wasm`,
+      coreURL: `${CORE_UMD_URL}/ffmpeg-core.js`,
+      wasmURL: `${CORE_UMD_URL}/ffmpeg-core.wasm`,
     });
     log('ffmpeg.wasm loaded (single-threaded)', 'success');
   }
 
   loaded = true;
+}
+
+/**
+ * Write a Blob to ffmpeg's virtual FS.
+ * For files <=1.5GB: uses writeFile (loads into memory as Uint8Array).
+ * For files >1.5GB: uses WORKERFS mount (reads from Blob on demand, no full copy).
+ */
+const LARGE_FILE_THRESHOLD = 1.5 * 1024 * 1024 * 1024; // 1.5GB
+
+async function mountInput(blob, fileName) {
+  if (blob.size <= LARGE_FILE_THRESHOLD) {
+    log(`Writing ${fileName} to ffmpeg FS (${(blob.size / 1024 / 1024).toFixed(0)} MB)...`);
+    const arrayBuffer = await blob.arrayBuffer();
+    await ffmpeg.writeFile(fileName, new Uint8Array(arrayBuffer));
+    log(`${fileName} written to ffmpeg FS`);
+    return { inputPath: fileName, mounted: false };
+  }
+
+  // Large file: mount via WORKERFS so ffmpeg reads from Blob on demand
+  const mountDir = '/input';
+  log(`Mounting ${fileName} via WORKERFS (${(blob.size / 1024 / 1024).toFixed(0)} MB, avoids full memory copy)...`);
+  await ffmpeg.createDir(mountDir);
+  await ffmpeg.mount(
+    'WORKERFS',
+    { files: [new File([blob], fileName)] },
+    mountDir,
+  );
+  log(`${fileName} mounted at ${mountDir}/${fileName}`);
+  return { inputPath: `${mountDir}/${fileName}`, mounted: true, mountDir };
+}
+
+async function unmountInput(mountInfo) {
+  if (mountInfo.mounted) {
+    await ffmpeg.unmount(mountInfo.mountDir);
+    await ffmpeg.deleteDir(mountInfo.mountDir);
+  } else {
+    await ffmpeg.deleteFile(mountInfo.inputPath);
+  }
 }
 
 /**
@@ -64,17 +101,8 @@ export async function loadFFmpeg(onProgress) {
 export async function extractAudio(videoBlob, outputFormat = 'aac') {
   if (!loaded) throw new Error('ffmpeg not loaded');
 
-  const inputName = 'input.mp4';
   const outputName = `output.${outputFormat}`;
-
-  log(`Writing video to ffmpeg FS (${(videoBlob.size / 1024 / 1024).toFixed(0)} MB)...`);
-
-  // Convert Blob to Uint8Array
-  const arrayBuffer = await videoBlob.arrayBuffer();
-  const uint8 = new Uint8Array(arrayBuffer);
-
-  await ffmpeg.writeFile(inputName, uint8);
-  log('Video written to ffmpeg FS');
+  const mount = await mountInput(videoBlob, 'input.mp4');
 
   // Extract audio — stream copy is very fast
   const codecArgs = outputFormat === 'wav'
@@ -84,7 +112,7 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
   log(`Extracting audio (${outputFormat}, ${outputFormat === 'wav' ? 're-encode' : 'stream copy'})...`);
 
   await ffmpeg.exec([
-    '-i', inputName,
+    '-i', mount.inputPath,
     '-vn',           // no video
     '-sn',           // no subtitles
     ...codecArgs,
@@ -93,11 +121,11 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
 
   log('Audio extraction complete');
 
-  // Read output
+  // Read output (audio is small relative to video)
   const outputData = await ffmpeg.readFile(outputName);
 
-  // Clean up ffmpeg FS
-  await ffmpeg.deleteFile(inputName);
+  // Clean up
+  await unmountInput(mount);
   await ffmpeg.deleteFile(outputName);
 
   const audioBlob = new Blob([outputData.buffer], {

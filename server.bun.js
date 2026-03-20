@@ -1,5 +1,5 @@
 const server = Bun.serve({
-  port: 3000,
+  port: parseInt(process.env.PORT || '3000'),
   async fetch(req) {
     const url = new URL(req.url);
     const filePath = url.pathname === '/' ? '/index.html' : url.pathname;

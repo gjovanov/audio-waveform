@@ -1,0 +1,62 @@
+[
+  {
+    "scene": 1,
+    "text": "Audio Waveform — because uploading 5GB to a server felt like dial-up energy.",
+    "duration": 5000
+  },
+  {
+    "scene": 2,
+    "text": "Drop a video file. Any size. We don't judge. Up to 5GB.",
+    "duration": 4000
+  },
+  {
+    "scene": 3,
+    "text": "Stored in IndexedDB. 50MB chunks. Your browser is now a database.",
+    "duration": 5000
+  },
+  {
+    "scene": 4,
+    "text": "ffmpeg.wasm loads. WebAssembly goes brrr.",
+    "duration": 4000
+  },
+  {
+    "scene": 5,
+    "text": "Audio extracted in seconds. Stream copy — no re-encoding. Just vibes.",
+    "duration": 5000
+  },
+  {
+    "scene": 6,
+    "text": "Downsampled to 8kHz mono. 57 million samples. Math is beautiful.",
+    "duration": 5000
+  },
+  {
+    "scene": 7,
+    "text": "Peaks extracted. One min/max pair per pixel. Pixel-perfect accuracy.",
+    "duration": 4000
+  },
+  {
+    "scene": 8,
+    "text": "Waveform rendered. Blue is quiet. Red means someone's yelling.",
+    "duration": 5000
+  },
+  {
+    "scene": 9,
+    "text": "Click to seek. The cursor follows. Auto-scroll keeps up.",
+    "duration": 4000
+  },
+  {
+    "scene": 10,
+    "text": "Zoom in. Zoom out. Find that bass drop.",
+    "duration": 4000
+  },
+  {
+    "scene": 11,
+    "text": "Zero server processing. Your files never leave your machine. Privacy by architecture.",
+    "duration": 5000
+  },
+  {
+    "scene": 12,
+    "text": "Audio Waveform. 885 lines of vanilla JS. No framework. No excuses.",
+    "duration": 5000
+  }
+]

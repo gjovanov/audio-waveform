@@ -2,6 +2,12 @@
 
 Browser-only audio extraction and waveform visualization from large video files. Upload videos up to 5 GB, extract audio with ffmpeg.wasm, and render interactive waveforms — no server-side processing.
 
+## Demo
+
+https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
+
+> Drop a video, extract audio, visualize the waveform — all in the browser. Zero server processing. Your files never leave your machine.
+
 ---
 
 ## Features

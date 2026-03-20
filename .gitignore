@@ -8,3 +8,13 @@ node_modules/
 *.wav
 *.mp3
 .DS_Store
+
+# Keep these tracked
+!e2e/video/background-music.mp3
+!audio-waveform-intro.mp4
+
+# E2E test artifacts
+e2e/test-results/
+e2e/video/sample.mp4
+e2e/video/sample-large.mov
+e2e/node_modules/

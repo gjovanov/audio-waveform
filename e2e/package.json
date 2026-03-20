@@ -1,0 +1,11 @@
+{
+  "name": "audio-waveform-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "record": "playwright test video/record-intro.spec.ts --config=playwright.video.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

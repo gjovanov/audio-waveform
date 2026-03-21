@@ -93,7 +93,10 @@ async function unmountInput(mountInfo) {
 }
 
 /**
- * Extract audio from a video Blob using stream copy (no re-encoding).
+ * Extract audio from a video Blob.
+ * Tries stream copy first (fast, lossless). If the source audio codec is
+ * incompatible with the output container (e.g. PCM in MOV → AAC container),
+ * falls back to re-encoding to AAC.
  * @param {Blob} videoBlob - the video file
  * @param {string} outputFormat - 'aac', 'mp3', or 'wav'
  * @returns {Promise<Blob>} - the extracted audio
@@ -104,24 +107,62 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
   const outputName = `output.${outputFormat}`;
   const mount = await mountInput(videoBlob, 'input.mp4');
 
-  // Extract audio — stream copy is very fast
+  // Try stream copy first (fast, no re-encoding)
+  if (outputFormat !== 'wav') {
+    log(`Extracting audio (${outputFormat}, stream copy)...`);
+
+    await ffmpeg.exec([
+      '-i', mount.inputPath,
+      '-vn',           // no video
+      '-sn',           // no subtitles
+      '-c:a', 'copy',
+      outputName,
+    ]);
+
+    // Check if stream copy succeeded (output file exists and has data)
+    let outputData;
+    try {
+      outputData = await ffmpeg.readFile(outputName);
+    } catch {
+      outputData = null;
+    }
+
+    if (outputData && outputData.length > 0) {
+      log('Audio extraction complete (stream copy)');
+      await unmountInput(mount);
+      await ffmpeg.deleteFile(outputName);
+
+      const audioBlob = new Blob([outputData.buffer], {
+        type: outputFormat === 'mp3' ? 'audio/mpeg' : 'audio/aac',
+      });
+      log(`Extracted audio: ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB`, 'success');
+      return audioBlob;
+    }
+
+    // Stream copy failed — clean up and fall back to re-encoding
+    log('Stream copy failed (incompatible codec) — falling back to re-encode', 'warn');
+    try { await ffmpeg.deleteFile(outputName); } catch { /* may not exist */ }
+  }
+
+  // Re-encode audio
   const codecArgs = outputFormat === 'wav'
     ? ['-c:a', 'pcm_s16le']
-    : ['-c:a', 'copy'];
+    : outputFormat === 'mp3'
+      ? ['-c:a', 'libmp3lame', '-b:a', '192k']
+      : ['-c:a', 'aac', '-b:a', '192k'];
 
-  log(`Extracting audio (${outputFormat}, ${outputFormat === 'wav' ? 're-encode' : 'stream copy'})...`);
+  log(`Extracting audio (${outputFormat}, re-encode)...`);
 
   await ffmpeg.exec([
     '-i', mount.inputPath,
-    '-vn',           // no video
-    '-sn',           // no subtitles
+    '-vn',
+    '-sn',
     ...codecArgs,
     outputName,
   ]);
 
-  log('Audio extraction complete');
+  log('Audio extraction complete (re-encoded)');
 
-  // Read output (audio is small relative to video)
   const outputData = await ffmpeg.readFile(outputName);
 
   // Clean up

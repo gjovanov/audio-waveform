@@ -2,6 +2,8 @@
 
 Browser-only audio extraction and waveform visualization from large video files. Upload videos up to 5 GB, extract audio with ffmpeg.wasm, and render interactive waveforms — no server-side processing.
 
+**Try it live: https://audio-waveform.roomler.live/**
+
 ## Demo
 
 https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
@@ -24,7 +26,7 @@ https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
 | | WORKERFS mount for files > 1.5 GB (avoids ArrayBuffer limit) | :white_check_mark: |
 | | Multi-threaded with single-threaded fallback | :white_check_mark: |
 | | Progress reporting | :white_check_mark: |
-| **Analysis** | ffmpeg-based downsampling (8 kHz mono float32 PCM) | :white_check_mark: |
+| **Analysis** | Adaptive downsampling (16 kHz default, 8 kHz for >2hr files) | :white_check_mark: |
 | | Peak extraction for waveform rendering | :white_check_mark: |
 | | Memory-efficient — never loads full audio into heap | :white_check_mark: |
 | **Visualization** | Canvas-based mirrored waveform | :white_check_mark: |
@@ -42,7 +44,7 @@ https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
 |-------|-----------|
 | **Frontend** | Vanilla JS (ES modules), HTML5, CSS3 |
 | **Audio Extraction** | [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm) 0.12 (WebAssembly) |
-| **Audio Analysis** | Web AudioContext API, ffmpeg downsampling |
+| **Audio Analysis** | ffmpeg downsampling (16 kHz adaptive) |
 | **Rendering** | HTML5 Canvas (device-pixel-ratio aware) |
 | **Storage** | IndexedDB (chunked Blob storage) |
 | **Dev Server** | Node.js or [Bun](https://bun.sh/) (COOP/COEP headers) |
@@ -69,7 +71,7 @@ graph TB
     IDB -->|"Blob reassembly"| FFMPEG
     FFMPEG -->|"-vn -c:a copy"| FFMPEG
     FFMPEG -->|"AAC audio Blob"| ANALYZER
-    FFMPEG -->|"8kHz mono f32le"| ANALYZER
+    FFMPEG -->|"16kHz mono f32le"| ANALYZER
     ANALYZER -->|"peaks [{min,max}]"| CANVAS
     UI -->|"click-to-seek"| AUDIO
     AUDIO -->|"currentTime"| CANVAS
@@ -117,7 +119,6 @@ node server.js       # Node.js
 | COOP/COEP headers | SharedArrayBuffer prerequisite |
 | IndexedDB | Chunked file storage |
 | WebAssembly | ffmpeg.wasm runtime |
-| Web AudioContext | Audio decoding fallback |
 | Canvas 2D | Waveform rendering |
 
 Tested on: Chrome 120+, Firefox 120+, Edge 120+. Safari has limited SharedArrayBuffer support — ffmpeg falls back to single-threaded mode.
@@ -137,6 +138,10 @@ Tested on: Chrome 120+, Firefox 120+, Edge 120+. Safari has limited SharedArrayB
 - `Blob.arrayBuffer()` limited to ~2 GB in most browsers — handled via WORKERFS fallback
 - ffmpeg.wasm single-threaded mode is significantly slower (used when SharedArrayBuffer is unavailable)
 - Audio analysis decodes to 16 kHz mono (8 kHz for files over 2 hours) — sufficient for smooth waveform visualization, not for high-fidelity analysis
+
+## Deployment
+
+The app is deployed at [audio-waveform.roomler.live](https://audio-waveform.roomler.live/) via Nginx + systemd. Deployment scripts: [audio-waveform-deploy](https://github.com/gjovanov/audio-waveform-deploy).
 
 ## License
 

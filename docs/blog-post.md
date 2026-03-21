@@ -53,7 +53,7 @@ graph TB
     IDB -->|"Blob reassembly"| FFMPEG
     FFMPEG -->|"-vn -c:a copy"| FFMPEG
     FFMPEG -->|"AAC audio Blob"| ANALYZER
-    FFMPEG -->|"8kHz mono f32le"| ANALYZER
+    FFMPEG -->|"16kHz mono f32le"| ANALYZER
     ANALYZER -->|"peaks [{min,max}]"| CANVAS
     UI -->|"click-to-seek"| AUDIO
     AUDIO -->|"currentTime"| CANVAS
@@ -83,7 +83,7 @@ The "server" in this diagram is a liar. It serves static files. That's it. HTML,
 | **Rendering** | Canvas 2D | Pixel-perfect waveforms with devicePixelRatio scaling |
 | **Dev Server** | Node.js or Bun | Static files + COOP/COEP headers. That's the whole job |
 
-No React. No Vue. No Svelte. No bundler. No TypeScript. Just 6 JavaScript files, a CSS file, and an HTML page. 885 lines of code total. The `node_modules` folder is bigger than my entire source tree. As god intended.
+No React. No Vue. No Svelte. No bundler. No TypeScript. Just 5 JavaScript files, a CSS file, and an HTML page. The `node_modules` folder is bigger than my entire source tree. As god intended.
 
 ---
 
@@ -200,8 +200,8 @@ Once we have the audio, we need to turn it into something visual. The pipeline:
 
 ```mermaid
 flowchart LR
-    AAC["AAC Audio<br/>~30-50 MB"] --> DS["Downsample<br/>8 kHz mono f32le"]
-    DS --> PCM["Float32Array<br/>~230 MB for 2hr"]
+    AAC["AAC Audio<br/>~30-50 MB"] --> DS["Downsample<br/>16 kHz mono f32le"]
+    DS --> PCM["Float32Array<br/>~460 MB for 2hr"]
     PCM --> PEAKS["Peak Extraction<br/>min/max per pixel"]
     PEAKS --> DATA["Peak Array<br/>~50 KB"]
     DATA --> CANVAS["Canvas Render<br/>Color-coded bars"]
@@ -216,7 +216,7 @@ flowchart LR
 
 ### Downsampling
 
-We don't need CD-quality audio for a visual waveform. We downsample to 8 kHz mono — that's one sample every 125 microseconds. For a 2-hour video, that's about 57 million samples × 4 bytes = ~230 MB. Sounds like a lot, but compared to the original 44.1 kHz stereo that would be ~1.2 GB, it's a bargain.
+We don't need CD-quality audio for a visual waveform. We downsample to 16 kHz mono (adaptive — 8 kHz for files over 2 hours to cap memory). For a 2-hour video at 16 kHz, that's about 115 million samples × 4 bytes = ~460 MB. Sounds like a lot, but compared to the original 44.1 kHz stereo that would be ~1.2 GB, it's a bargain. And the extra samples mean twice as many data points per peak bucket — smoother waveforms, fewer missed peaks at high zoom.
 
 ### Peak Extraction
 
@@ -358,7 +358,7 @@ For production deployment (Netlify, Cloudflare Pages, Vercel), you'd put these i
 
 My first version re-encoded audio to WAV for simplicity. Extracting audio from a 2-hour video took 4 minutes. Switching to stream copy (`-c:a copy`) dropped it to 5 seconds. Same quality. 48x faster. I felt like I'd discovered fire.
 
-The only catch: if the input audio is in an unusual codec (Vorbis in MKV, for example), copy mode might produce a container/codec mismatch. For this app, it works because most video files use AAC audio and we extract to an AAC container. If I needed universal support, I'd add a codec detection step and fall back to re-encoding only when necessary.
+The only catch: if the input audio is in an unusual codec (Vorbis in MKV, PCM in MOV), copy mode fails because the codec doesn't fit the output container. The fix? Try stream copy first, check if the output is empty, and fall back to re-encoding (AAC 192k) automatically. The user never sees the fallback — it just takes a few extra seconds instead of failing.
 
 ### 2. `new Blob()` is Lazy, and That's Beautiful
 
@@ -420,4 +420,4 @@ Or try it live at [audio-waveform.roomler.live](https://audio-waveform.roomler.l
 
 ---
 
-*Audio Waveform is open source under the MIT license. The entire codebase is 885 lines of vanilla JS. No dependencies except ffmpeg.wasm. PRs welcome, especially if you know how to make WORKERFS documentation less cryptic.*
+*Audio Waveform is open source under the MIT license. No dependencies except ffmpeg.wasm. PRs welcome, especially if you know how to make WORKERFS documentation less cryptic.*

@@ -2,6 +2,10 @@
 
 Browser-only audio extraction and waveform visualization from large video files (up to 5 GB). Zero server-side processing — everything runs in the browser via ffmpeg.wasm, IndexedDB, and Canvas.
 
+**Live**: https://audio-waveform.roomler.live/
+**Source**: https://github.com/gjovanov/audio-waveform
+**Deploy**: https://github.com/gjovanov/audio-waveform-deploy
+
 ## Quick Start
 
 ```bash
@@ -10,7 +14,7 @@ bun server.bun.js    # or: node server.js
 # Open http://localhost:3000
 ```
 
-Both servers set COOP/COEP headers required for SharedArrayBuffer (ffmpeg.wasm multi-threading).
+Both servers set COOP/COEP headers required for SharedArrayBuffer (ffmpeg.wasm multi-threading). Both include path traversal protection.
 
 ## Tech Stack
 
@@ -22,13 +26,13 @@ Both servers set COOP/COEP headers required for SharedArrayBuffer (ffmpeg.wasm m
 
 ## Architecture
 
-Single-page app with 6 ES modules orchestrated by `app.js`:
+Single-page app with 5 ES modules orchestrated by `app.js`:
 
 ```
 app.js (controller)
-├── utils.js          — log(), formatBytes(), formatTime(), show/hide, setProgress
-├── file-store.js     — IndexedDB chunked storage (store, get, delete, list, quota)
-├── ffmpeg-worker.js  — ffmpeg.wasm lifecycle, audio extraction, downsampling
+├── utils.js          — log() (capped at 500 entries), formatBytes(), formatTime(), show/hide, setProgress
+├── file-store.js     — IndexedDB chunked storage (store with rollback, get, delete, list, quota)
+├── ffmpeg-worker.js  — ffmpeg.wasm lifecycle, audio extraction (stream copy + re-encode fallback), downsampling
 ├── audio-analyzer.js — peak extraction from float32 PCM samples
 └── waveform-renderer.js — Canvas waveform with zoom, cursor, seek, auto-scroll
 ```
@@ -49,32 +53,32 @@ app.js (controller)
 
 ## Module Guide
 
-### `js/app.js` (277 lines)
-Main controller. Wires DOM events to modules. Handles file upload, processing pipeline orchestration, playback controls (play/pause/seek/zoom). Adaptive sample rate selection: 16 kHz for files under ~2 hours, 8 kHz fallback for longer files. Entry point loaded as ES module from `index.html`.
+### `js/app.js`
+Main controller. Wires DOM events to modules. Handles file upload, processing pipeline orchestration, playback controls (play/pause/seek/zoom). Adaptive sample rate selection: 16 kHz for files under ~2 hours, 8 kHz fallback for longer files. Concurrent processing guard prevents double-click corruption. rAF cursor loop starts on play, stops on pause/end. File list uses `textContent` (not `innerHTML`) to prevent XSS via filenames. Entry point loaded as ES module from `index.html`.
 
-### `js/file-store.js` (163 lines)
-IndexedDB wrapper. Database `audio-waveform-db` with two object stores: `file-meta` (keyPath: `id`) and `file-chunks` (manual keys `{id}-{i}`). Chunk size: 50 MB. `storeFile()` splits with `File.slice()`. `getFileAsBlob()` reassembles via `new Blob(chunks)` (lazy, no memory copy). `checkQuota()` uses `navigator.storage.estimate()`.
+### `js/file-store.js`
+IndexedDB wrapper. Database `audio-waveform-db` with two object stores: `file-meta` (keyPath: `id`) and `file-chunks` (manual keys `{id}-{i}`). Chunk size: 50 MB. IDs via `crypto.randomUUID()`. `storeFile()` splits with `File.slice()`, cleans up orphaned chunks on failure. `deleteFile()` batches chunk deletes into a single IDB transaction. `getFileAsBlob()` reassembles via `new Blob(chunks)` (lazy, no memory copy). `checkQuota()` uses `navigator.storage.estimate()`.
 
-### `js/ffmpeg-worker.js` (191 lines)
-ffmpeg.wasm integration. Dual-mode loading: ESM (multi-threaded, requires SharedArrayBuffer) with UMD fallback (single-threaded). `mountInput()` uses `writeFile()` for files ≤1.5 GB, WORKERFS mount for larger files (avoids ArrayBuffer limit). `extractAudio()` runs stream copy (`-c:a copy`). `downsampleForAnalysis()` produces 16 kHz mono float32 PCM (default), returns `{ samples, sampleRate }`. `terminate()` frees WASM heap.
+### `js/ffmpeg-worker.js`
+ffmpeg.wasm integration. Dual-mode loading: ESM (multi-threaded, requires SharedArrayBuffer) with UMD fallback (single-threaded). `mountInput()` uses `writeFile()` for files ≤1.5 GB, WORKERFS mount for larger files (avoids ArrayBuffer limit). `extractAudio()` tries stream copy first (`-c:a copy`), falls back to re-encoding (AAC 192k) if the source codec is incompatible (e.g. PCM in MOV). All `ffmpeg.exec()` calls check exit codes and throw on failure. `downsampleForAnalysis()` produces 16 kHz mono float32 PCM (default), returns `{ samples, sampleRate }`. `terminate()` frees WASM heap.
 
-### `js/audio-analyzer.js` (73 lines)
-Peak extraction. `extractPeaksFromPCM()` is O(n) single-pass: groups float32 samples into buckets matching pixel width, finds min/max per bucket. Fallback `extractPeaksViaAudioContext()` for small files (<50 MB).
+### `js/audio-analyzer.js`
+Peak extraction. `extractPeaksFromPCM()` is O(n) single-pass: groups float32 samples into buckets matching pixel width, finds min/max per bucket.
 
-### `js/waveform-renderer.js` (139 lines)
-Canvas renderer. `WaveformRenderer` class handles: device-pixel-ratio scaling, mirrored waveform drawing with amplitude color coding (blue <0.4, green <0.7, orange <0.9, red ≥0.9), zoom (0.1x–50x), click-to-seek, playback cursor positioning, auto-scroll.
+### `js/waveform-renderer.js`
+Canvas renderer. `WaveformRenderer` class handles: device-pixel-ratio scaling, mirrored waveform drawing with amplitude color coding (blue <0.4, green <0.7, orange <0.9, red ≥0.9), zoom (0.1x–50x), click-to-seek, playback cursor positioning, auto-scroll. Stores `displayWidth` as numeric property (no `parseInt` on style strings).
 
-### `js/utils.js` (42 lines)
-Shared helpers: `log()` appends timestamped entries to log panel, `formatBytes()`, `formatTime()`, `show()`/`hide()`, `setProgress()`.
+### `js/utils.js`
+Shared helpers: `log()` appends timestamped entries to log panel (capped at 500 to prevent DOM bloat), `formatBytes()` (handles up to TB, safe for negative/zero), `formatTime()` (supports hours), `show()`/`hide()`, `setProgress()`.
 
-### `index.html` (83 lines)
+### `index.html`
 Single HTML page with sections: upload (drop zone + file picker), stored files list, processing progress, waveform (canvas + controls), log panel. Loads `app.js` as ES module.
 
-### `css/styles.css` (246 lines)
+### `css/styles.css`
 Dark theme (`#1a1a2e` background, `#4fc3f7` cyan accent). Responsive layout. Waveform container with horizontal scroll. Progress bars. Log panel with color-coded entries.
 
 ### `server.js` / `server.bun.js`
-Minimal static file servers on port 3000. Both set `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` on all responses.
+Minimal static file servers on port 3000 (configurable via `PORT` env var). Both set COOP/COEP headers and include path traversal protection (normalize + containment check).
 
 ## Key Design Decisions
 
@@ -84,6 +88,8 @@ Minimal static file servers on port 3000. Both set `Cross-Origin-Opener-Policy: 
 4. **16 kHz mono downsampling** (adaptive) — default 16 kHz for smoother waveforms (~460 MB for 2hr). Falls back to 8 kHz for files over 2 hours to cap memory at ~460 MB.
 5. **One peak per pixel** — no oversampling, no interpolation. Exact pixel-column amplitude representation.
 6. **No build step** — pure ES modules served directly. No bundler, no transpiler.
+7. **Stream copy with fallback** — tries `-c:a copy` first (fast), falls back to AAC re-encoding if codec is incompatible (PCM, Vorbis, etc.).
+8. **Security** — path traversal protection in both servers, XSS-safe DOM rendering (textContent, not innerHTML), ffmpeg exit code validation.
 
 ## Memory Strategy
 

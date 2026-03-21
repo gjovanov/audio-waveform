@@ -40,32 +40,20 @@ graph TD
         PK1["extractPeaksFromPCM()"]
     end
 
-    subgraph Fallback["Fallback: AudioContext"]
-        DEC["AudioContext.decodeAudioData()"]
-        BUF["AudioBuffer.getChannelData(0)"]
-        PK2["extractPeaksFromPCM()"]
-    end
-
     AUDIO --> SIZE
-    SIZE -->|"Any size (recommended)"| DS --> PCM --> PK1
-    SIZE -->|"< 50 MB only"| DEC --> BUF --> PK2
+    SIZE -->|"Any size"| DS --> PCM --> PK1
 
     style AUDIO fill:#4fc3f7,color:#1a1a2e
     style SIZE fill:#ffa726,color:#1a1a2e
     style DS fill:#66bb6a,color:#1a1a2e
     style PCM fill:#66bb6a,color:#1a1a2e
     style PK1 fill:#66bb6a,color:#1a1a2e
-    style DEC fill:#78909c,color:#fff
-    style BUF fill:#78909c,color:#fff
-    style PK2 fill:#78909c,color:#fff
 ```
 
-The ffmpeg-based downsampling is the primary strategy because:
+The ffmpeg-based downsampling is the only strategy because:
 - Works for any file size (the downsampled output is always manageable)
 - Predictable memory usage (Float32Array at 16 kHz mono, adaptive 8 kHz for files over 2 hours)
 - No browser `decodeAudioData` quirks or memory limits
-
-The `AudioContext.decodeAudioData()` fallback is available for small files but is not used in the default pipeline.
 
 ## Canvas Rendering
 

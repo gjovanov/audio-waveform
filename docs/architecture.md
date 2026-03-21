@@ -220,7 +220,7 @@ graph LR
 | `utils.js` | Logging, formatting, DOM helpers | `log()`, `formatBytes()`, `setProgress()` |
 | `file-store.js` | Chunked IndexedDB storage | `storeFile()`, `getFileAsBlob()`, `deleteFile()` |
 | `ffmpeg-worker.js` | ffmpeg.wasm lifecycle, audio extraction | `loadFFmpeg()`, `extractAudio()`, `downsampleForAnalysis()` |
-| `audio-analyzer.js` | Peak extraction from PCM data | `extractPeaksFromPCM()`, `extractPeaksViaAudioContext()` |
+| `audio-analyzer.js` | Peak extraction from PCM data | `extractPeaksFromPCM()` |
 | `waveform-renderer.js` | Canvas rendering, zoom, playback cursor | `WaveformRenderer` class |
 
 ## COOP/COEP Headers

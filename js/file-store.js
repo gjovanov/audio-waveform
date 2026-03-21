@@ -29,7 +29,7 @@ function openDB() {
 }
 
 function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return crypto.randomUUID();
 }
 
 /**
@@ -42,41 +42,58 @@ export async function storeFile(file, onProgress) {
   const db = await openDB();
   const id = generateId();
   const chunkCount = Math.ceil(file.size / CHUNK_SIZE);
+  let storedChunks = 0;
 
-  // Store chunks
-  for (let i = 0; i < chunkCount; i++) {
-    const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunk = file.slice(start, end);
+  try {
+    // Store chunks
+    for (let i = 0; i < chunkCount; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('file-chunks', 'readwrite');
+        tx.objectStore('file-chunks').put(chunk, `${id}-${i}`);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+
+      storedChunks++;
+      if (onProgress) onProgress(end, file.size);
+    }
+
+    // Store metadata
+    const meta = {
+      id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      chunkCount,
+      createdAt: Date.now(),
+    };
 
     await new Promise((resolve, reject) => {
-      const tx = db.transaction('file-chunks', 'readwrite');
-      tx.objectStore('file-chunks').put(chunk, `${id}-${i}`);
+      const tx = db.transaction('file-meta', 'readwrite');
+      tx.objectStore('file-meta').put(meta);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
     });
 
-    if (onProgress) onProgress(end, file.size);
+    return meta;
+  } catch (err) {
+    // Clean up orphaned chunks on failure
+    for (let i = 0; i < storedChunks; i++) {
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('file-chunks', 'readwrite');
+          tx.objectStore('file-chunks').delete(`${id}-${i}`);
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch { /* best effort cleanup */ }
+    }
+    throw err;
   }
-
-  // Store metadata
-  const meta = {
-    id,
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    chunkCount,
-    createdAt: Date.now(),
-  };
-
-  await new Promise((resolve, reject) => {
-    const tx = db.transaction('file-meta', 'readwrite');
-    tx.objectStore('file-meta').put(meta);
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error);
-  });
-
-  return meta;
 }
 
 /**
@@ -111,14 +128,16 @@ export async function deleteFile(fileId) {
   const meta = await getMeta(db, fileId);
   if (!meta) return;
 
-  for (let i = 0; i < meta.chunkCount; i++) {
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction('file-chunks', 'readwrite');
-      tx.objectStore('file-chunks').delete(`${fileId}-${i}`);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+  // Delete all chunks in a single transaction
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('file-chunks', 'readwrite');
+    const store = tx.objectStore('file-chunks');
+    for (let i = 0; i < meta.chunkCount; i++) {
+      store.delete(`${fileId}-${i}`);
+    }
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
 
   await new Promise((resolve, reject) => {
     const tx = db.transaction('file-meta', 'readwrite');

@@ -1,7 +1,5 @@
 /**
  * Audio analysis — extracts peak waveform data from PCM samples.
- * Primary strategy: analyze downsampled float32 PCM from ffmpeg.
- * Fallback: decode via AudioContext for small files.
  */
 
 import { log } from './utils.js';
@@ -44,29 +42,3 @@ export function extractPeaksFromPCM(samples, targetWidth, onProgress) {
   return peaks;
 }
 
-/**
- * Fallback: decode an audio Blob via AudioContext and extract peaks.
- * Only suitable for small files (<50MB / ~10 minutes).
- *
- * @param {Blob} audioBlob
- * @param {number} targetWidth
- * @param {function} onProgress
- * @returns {Promise<Array<{min: number, max: number}>>}
- */
-export async function extractPeaksViaAudioContext(audioBlob, targetWidth, onProgress) {
-  log('Decoding audio via AudioContext...');
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-  try {
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Use first channel
-    const channelData = audioBuffer.getChannelData(0);
-    log(`Decoded: ${audioBuffer.duration.toFixed(1)}s, ${audioBuffer.sampleRate}Hz, ${audioBuffer.numberOfChannels}ch`);
-
-    return extractPeaksFromPCM(channelData, targetWidth, onProgress);
-  } finally {
-    await audioContext.close();
-  }
-}

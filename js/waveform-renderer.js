@@ -18,6 +18,7 @@ export class WaveformRenderer {
     this.peaks = null;
     this.zoom = 1;
     this.duration = 0; // seconds
+    this.displayWidth = 0; // current rendered width in CSS pixels
     this.onSeek = null; // callback(timeInSeconds)
 
     this.container.addEventListener('click', (e) => this._handleClick(e));
@@ -47,6 +48,7 @@ export class WaveformRenderer {
     const displayWidth = Math.max(containerWidth, Math.floor(this.peaks.length * this.zoom));
     const displayHeight = this.container.clientHeight;
 
+    this.displayWidth = displayWidth;
     this.canvas.width = displayWidth * dpr;
     this.canvas.height = displayHeight * dpr;
     this.canvas.style.width = `${displayWidth}px`;
@@ -113,10 +115,9 @@ export class WaveformRenderer {
    * @param {number} currentTime - current playback time in seconds
    */
   updateCursor(currentTime) {
-    if (!this.duration) return;
+    if (!this.duration || !this.displayWidth) return;
     const fraction = currentTime / this.duration;
-    const canvasWidth = parseInt(this.canvas.style.width);
-    const x = fraction * canvasWidth;
+    const x = fraction * this.displayWidth;
     this.cursorEl.style.left = `${x}px`;
 
     // Auto-scroll to keep cursor visible
@@ -128,11 +129,10 @@ export class WaveformRenderer {
   }
 
   _handleClick(e) {
-    if (!this.duration || !this.onSeek) return;
+    if (!this.duration || !this.displayWidth || !this.onSeek) return;
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left + this.container.scrollLeft;
-    const canvasWidth = parseInt(this.canvas.style.width);
-    const time = (x / canvasWidth) * this.duration;
+    const time = (x / this.displayWidth) * this.duration;
     this.onSeek(Math.max(0, Math.min(this.duration, time)));
   }
 }

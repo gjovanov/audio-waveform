@@ -4,7 +4,7 @@
 
 ```mermaid
 graph LR
-    RAW["Float32Array<br/>8kHz mono PCM<br/>(from ffmpeg)"]
+    RAW["Float32Array<br/>16kHz mono PCM<br/>(from ffmpeg)"]
     BUCKET["Bucket by pixel width<br/>samplesPerBucket = length / targetWidth"]
     PEAKS["Extract min/max per bucket"]
     DATA["peaks: [{min, max}, ...]<br/>one entry per pixel column"]
@@ -35,7 +35,7 @@ graph TD
     SIZE{"Blob size?"}
 
     subgraph Primary["Primary: ffmpeg Downsample"]
-        DS["ffmpeg → 8kHz mono float32"]
+        DS["ffmpeg → 16kHz mono float32"]
         PCM["Float32Array (~230 MB for 2hr)"]
         PK1["extractPeaksFromPCM()"]
     end
@@ -62,7 +62,7 @@ graph TD
 
 The ffmpeg-based downsampling is the primary strategy because:
 - Works for any file size (the downsampled output is always manageable)
-- Predictable memory usage (Float32Array at 8 kHz mono)
+- Predictable memory usage (Float32Array at 16 kHz mono, adaptive 8 kHz for files over 2 hours)
 - No browser `decodeAudioData` quirks or memory limits
 
 The `AudioContext.decodeAudioData()` fallback is available for small files but is not used in the default pipeline.

@@ -142,10 +142,10 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
  * Downsample audio to low-rate mono PCM for waveform analysis.
  * Produces a small float32 raw PCM buffer suitable for peak extraction.
  * @param {Blob} audioBlob - extracted audio
- * @param {number} sampleRate - target sample rate (default 8000)
- * @returns {Promise<Float32Array>} - raw PCM samples
+ * @param {number} sampleRate - target sample rate (default 16000)
+ * @returns {Promise<{samples: Float32Array, sampleRate: number}>}
  */
-export async function downsampleForAnalysis(audioBlob, sampleRate = 8000) {
+export async function downsampleForAnalysis(audioBlob, sampleRate = 16000) {
   if (!loaded) throw new Error('ffmpeg not loaded');
 
   const inputName = 'analysis_input';
@@ -174,7 +174,7 @@ export async function downsampleForAnalysis(audioBlob, sampleRate = 8000) {
   const durationSec = float32.length / sampleRate;
 
   log(`Downsampled: ${float32.length} samples (${durationSec.toFixed(1)}s at ${sampleRate}Hz)`, 'success');
-  return float32;
+  return { samples: float32, sampleRate };
 }
 
 /**

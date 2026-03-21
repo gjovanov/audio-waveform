@@ -134,7 +134,7 @@ Tested on: Chrome 120+, Firefox 120+, Edge 120+. Safari has limited SharedArrayB
 - Files > 2 GB require WORKERFS mount (automatic) — extraction speed depends on browser I/O
 - `Blob.arrayBuffer()` limited to ~2 GB in most browsers — handled via WORKERFS fallback
 - ffmpeg.wasm single-threaded mode is significantly slower (used when SharedArrayBuffer is unavailable)
-- Audio analysis decodes to 8 kHz mono — sufficient for waveform visualization, not for high-fidelity analysis
+- Audio analysis decodes to 16 kHz mono (8 kHz for files over 2 hours) — sufficient for smooth waveform visualization, not for high-fidelity analysis
 
 ## License
 

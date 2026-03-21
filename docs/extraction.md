@@ -114,24 +114,31 @@ The output file is typically 30-50 MB for a 2-hour video, easily fitting in WASM
 After extraction, the audio is downsampled for efficient waveform analysis:
 
 ```
-ffmpeg -i audio.aac -ac 1 -ar 8000 -f f32le -acodec pcm_f32le output.raw
+ffmpeg -i audio.aac -ac 1 -ar 16000 -f f32le -acodec pcm_f32le output.raw
 ```
 
 | Flag | Purpose |
 |------|---------|
 | `-ac 1` | Mono (single channel) |
-| `-ar 8000` | 8 kHz sample rate |
+| `-ar 16000` | 16 kHz sample rate (default; 8 kHz for files over 2 hours) |
 | `-f f32le` | Raw float32 little-endian output |
 | `-acodec pcm_f32le` | 32-bit float PCM codec |
 
+### Adaptive Sample Rate
+
+The sample rate is chosen automatically based on estimated audio duration:
+
+- **≤ 2 hours**: 16 kHz — smoother waveforms, better peak accuracy per pixel bucket
+- **> 2 hours**: 8 kHz — halves memory usage to stay within ~460 MB budget
+
 ### Output Size
 
-| Input Duration | Samples | Raw Size |
-|---------------|---------|----------|
-| 30 min | 14.4 M | ~55 MB |
-| 1 hour | 28.8 M | ~110 MB |
-| 2 hours | 57.6 M | ~230 MB |
-| 3 hours | 86.4 M | ~330 MB |
+| Input Duration | 16 kHz Samples | 16 kHz Size | 8 kHz Samples | 8 kHz Size |
+|---------------|---------------|-------------|--------------|------------|
+| 30 min | 28.8 M | ~115 MB | 14.4 M | ~55 MB |
+| 1 hour | 57.6 M | ~230 MB | 28.8 M | ~110 MB |
+| 2 hours | 115.2 M | ~460 MB | 57.6 M | ~230 MB |
+| 3 hours | — (falls back) | — | 86.4 M | ~330 MB |
 
 This produces a `Float32Array` that fits comfortably in JavaScript heap memory and can be processed for peak extraction without chunking.
 

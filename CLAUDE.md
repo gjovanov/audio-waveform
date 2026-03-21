@@ -41,7 +41,7 @@ app.js (controller)
 3. Load ffmpeg.wasm                → multi-threaded ESM, fallback to single-threaded UMD
 4. Reassemble file                 → getFileAsBlob() — lazy Blob concatenation
 5. Extract audio                   → -vn -c:a copy (stream copy, no re-encoding)
-6. Downsample                      → 8 kHz mono float32 PCM via ffmpeg
+6. Downsample                      → 16 kHz mono float32 PCM via ffmpeg (8 kHz for >2hr files)
 7. Extract peaks                   → one {min, max} pair per pixel bucket
 8. Render waveform                 → Canvas with amplitude color coding
 9. Playback sync                   → requestAnimationFrame cursor + auto-scroll
@@ -50,13 +50,13 @@ app.js (controller)
 ## Module Guide
 
 ### `js/app.js` (277 lines)
-Main controller. Wires DOM events to modules. Handles file upload, processing pipeline orchestration, playback controls (play/pause/seek/zoom). Entry point loaded as ES module from `index.html`.
+Main controller. Wires DOM events to modules. Handles file upload, processing pipeline orchestration, playback controls (play/pause/seek/zoom). Adaptive sample rate selection: 16 kHz for files under ~2 hours, 8 kHz fallback for longer files. Entry point loaded as ES module from `index.html`.
 
 ### `js/file-store.js` (163 lines)
 IndexedDB wrapper. Database `audio-waveform-db` with two object stores: `file-meta` (keyPath: `id`) and `file-chunks` (manual keys `{id}-{i}`). Chunk size: 50 MB. `storeFile()` splits with `File.slice()`. `getFileAsBlob()` reassembles via `new Blob(chunks)` (lazy, no memory copy). `checkQuota()` uses `navigator.storage.estimate()`.
 
 ### `js/ffmpeg-worker.js` (191 lines)
-ffmpeg.wasm integration. Dual-mode loading: ESM (multi-threaded, requires SharedArrayBuffer) with UMD fallback (single-threaded). `mountInput()` uses `writeFile()` for files ≤1.5 GB, WORKERFS mount for larger files (avoids ArrayBuffer limit). `extractAudio()` runs stream copy (`-c:a copy`). `downsampleForAnalysis()` produces 8 kHz mono float32 PCM. `terminate()` frees WASM heap.
+ffmpeg.wasm integration. Dual-mode loading: ESM (multi-threaded, requires SharedArrayBuffer) with UMD fallback (single-threaded). `mountInput()` uses `writeFile()` for files ≤1.5 GB, WORKERFS mount for larger files (avoids ArrayBuffer limit). `extractAudio()` runs stream copy (`-c:a copy`). `downsampleForAnalysis()` produces 16 kHz mono float32 PCM (default), returns `{ samples, sampleRate }`. `terminate()` frees WASM heap.
 
 ### `js/audio-analyzer.js` (73 lines)
 Peak extraction. `extractPeaksFromPCM()` is O(n) single-pass: groups float32 samples into buckets matching pixel width, finds min/max per bucket. Fallback `extractPeaksViaAudioContext()` for small files (<50 MB).
@@ -81,7 +81,7 @@ Minimal static file servers on port 3000. Both set `Cross-Origin-Opener-Policy: 
 1. **Stream copy** (`-c:a copy`) — extracts audio without re-encoding. Seconds instead of minutes for 2-hour videos.
 2. **50 MB chunks** — balance between IDB transaction limits and overhead. Proven across Chrome, Firefox, Edge.
 3. **1.5 GB threshold** — files above this use WORKERFS mount (Emscripten virtual FS reading from Blob on-demand) to avoid ArrayBuffer limits.
-4. **8 kHz mono downsampling** — reduces a 2-hour audio to ~230 MB Float32Array. Sufficient for waveform visualization.
+4. **16 kHz mono downsampling** (adaptive) — default 16 kHz for smoother waveforms (~460 MB for 2hr). Falls back to 8 kHz for files over 2 hours to cap memory at ~460 MB.
 5. **One peak per pixel** — no oversampling, no interpolation. Exact pixel-column amplitude representation.
 6. **No build step** — pure ES modules served directly. No bundler, no transpiler.
 
@@ -94,7 +94,7 @@ Minimal static file servers on port 3000. Both set `Cross-Origin-Opener-Policy: 
 | Extract (≤1.5 GB) | ≤1.5 GB | `writeFile()` to WASM heap |
 | Extract (>1.5 GB) | ~0 bytes | WORKERFS mount (on-demand) |
 | Audio output | ~30-50 MB | AAC Blob |
-| Downsample | ≤230 MB | Float32Array at 8 kHz mono |
+| Downsample | ≤460 MB | Float32Array at 16 kHz mono (8 kHz for >2hr) |
 | Peaks | ~50 KB | `[{min, max}]` array |
 
 ## Browser Requirements

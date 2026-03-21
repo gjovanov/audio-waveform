@@ -180,10 +180,17 @@ async function processFile(meta) {
 
     // Step 4: Downsample for waveform analysis
     show(analyzeProgress);
-    analyzeStatus.textContent = 'Downsampling audio for waveform analysis...';
+
+    // Adaptive sample rate: 16kHz for files under ~2 hours, 8kHz for longer
+    // AAC at ~128kbps ≈ 960KB/min. Use conservative 2x factor for VBR.
+    const estimatedMinutes = audioBlob.size / (960 * 1024) * 2;
+    const analysisRate = estimatedMinutes > 120 ? 8000 : 16000;
+    log(`Using ${analysisRate}Hz sample rate for analysis (estimated duration: ${Math.round(estimatedMinutes)}min)`);
+
+    analyzeStatus.textContent = `Downsampling audio (${analysisRate}Hz)...`;
     setProgress(analyzeBar, 10);
 
-    const pcmSamples = await downsampleForAnalysis(audioBlob, 8000);
+    const { samples: pcmSamples, sampleRate } = await downsampleForAnalysis(audioBlob, analysisRate);
     setProgress(analyzeBar, 60);
 
     // Step 5: Extract peaks
@@ -199,7 +206,7 @@ async function processFile(meta) {
     analyzeStatus.textContent = 'Analysis complete';
 
     // Step 6: Calculate duration from PCM data
-    const duration = pcmSamples.length / 8000;
+    const duration = pcmSamples.length / sampleRate;
 
     // Step 7: Set up audio playback
     currentAudioURL = URL.createObjectURL(audioBlob);

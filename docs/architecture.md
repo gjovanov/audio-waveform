@@ -22,7 +22,7 @@ graph TB
         end
 
         subgraph Analysis_Layer["Analysis Layer"]
-            DOWNSAMPLE["Downsampler<br/>8kHz mono float32 PCM"]
+            DOWNSAMPLE["Downsampler<br/>16kHz mono float32 PCM"]
             PEAKS["Peak Extractor<br/>min/max per pixel bucket"]
         end
 
@@ -107,8 +107,8 @@ sequenceDiagram
     WASM-->>FF: output.aac
     FF-->>UI: Audio Blob (~30 MB)
 
-    UI->>FF: downsampleForAnalysis(audioBlob, 8000)
-    FF->>WASM: exec(['-i','input','-ac','1','-ar','8000','-f','f32le','output.raw'])
+    UI->>FF: downsampleForAnalysis(audioBlob, 16000)
+    FF->>WASM: exec(['-i','input','-ac','1','-ar','16000','-f','f32le','output.raw'])
     WASM-->>FF: Float32Array
     FF-->>UI: PCM samples
 
@@ -160,7 +160,7 @@ graph LR
     end
 
     subgraph Analyze["6. Downsample"]
-        PCM["Float32Array<br/>~230 MB (2hr @ 8kHz)"]
+        PCM["Float32Array<br/>~460 MB (2hr @ 16kHz)"]
     end
 
     subgraph Render["7. Peaks"]

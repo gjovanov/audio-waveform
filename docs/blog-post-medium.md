@@ -260,7 +260,11 @@ bun server.bun.js
 
 Open `http://localhost:3000`, drop a video, and watch the waveform materialize.
 
+Need a large test file? The [Blender Reel 2013](https://download.blender.org/demo/movies/Blender_reel_2013.mov) is 2.4 GB (Creative Commons Attribution 3.0). The intro video on the repo uses a 3 GB version — same reel re-encoded to H.264 and concatenated 4x.
+
 </details>
+
+Or try it live at [audio-waveform.roomler.live](https://audio-waveform.roomler.live).
 
 [Audio Waveform](https://github.com/gjovanov/audio-waveform) is open source under the MIT license. The entire codebase is 885 lines of vanilla JS. No dependencies except ffmpeg.wasm.
 

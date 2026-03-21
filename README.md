@@ -7,6 +7,8 @@ Browser-only audio extraction and waveform visualization from large video files.
 https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
 
 > Drop a video, extract audio, visualize the waveform — all in the browser. Zero server processing. Your files never leave your machine.
+>
+> The intro video demonstrates a **3 GB MP4** file being processed entirely in the browser. The sample video is a 4x concatenation of the [Blender Reel 2013](https://download.blender.org/demo/movies/Blender_reel_2013.mov) (Creative Commons Attribution 3.0, re-encoded to H.264).
 
 ---
 

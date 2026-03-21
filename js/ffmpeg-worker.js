@@ -111,7 +111,7 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
   if (outputFormat !== 'wav') {
     log(`Extracting audio (${outputFormat}, stream copy)...`);
 
-    await ffmpeg.exec([
+    const copyExit = await ffmpeg.exec([
       '-i', mount.inputPath,
       '-vn',           // no video
       '-sn',           // no subtitles
@@ -119,12 +119,14 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
       outputName,
     ]);
 
-    // Check if stream copy succeeded (output file exists and has data)
+    // Check if stream copy succeeded
     let outputData;
-    try {
-      outputData = await ffmpeg.readFile(outputName);
-    } catch {
-      outputData = null;
+    if (copyExit === 0) {
+      try {
+        outputData = await ffmpeg.readFile(outputName);
+      } catch {
+        outputData = null;
+      }
     }
 
     if (outputData && outputData.length > 0) {
@@ -153,13 +155,18 @@ export async function extractAudio(videoBlob, outputFormat = 'aac') {
 
   log(`Extracting audio (${outputFormat}, re-encode)...`);
 
-  await ffmpeg.exec([
+  const exitCode = await ffmpeg.exec([
     '-i', mount.inputPath,
     '-vn',
     '-sn',
     ...codecArgs,
     outputName,
   ]);
+
+  if (exitCode !== 0) {
+    await unmountInput(mount);
+    throw new Error(`Audio extraction failed (ffmpeg exit code ${exitCode})`);
+  }
 
   log('Audio extraction complete (re-encoded)');
 
@@ -197,7 +204,7 @@ export async function downsampleForAnalysis(audioBlob, sampleRate = 16000) {
   const arrayBuffer = await audioBlob.arrayBuffer();
   await ffmpeg.writeFile(inputName, new Uint8Array(arrayBuffer));
 
-  await ffmpeg.exec([
+  const exitCode = await ffmpeg.exec([
     '-i', inputName,
     '-ac', '1',                    // mono
     '-ar', sampleRate.toString(),  // target sample rate
@@ -205,6 +212,11 @@ export async function downsampleForAnalysis(audioBlob, sampleRate = 16000) {
     '-acodec', 'pcm_f32le',
     outputName,
   ]);
+
+  if (exitCode !== 0) {
+    await ffmpeg.deleteFile(inputName);
+    throw new Error(`Downsampling failed (ffmpeg exit code ${exitCode})`);
+  }
 
   const rawData = await ffmpeg.readFile(outputName);
 

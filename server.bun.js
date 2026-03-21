@@ -1,10 +1,20 @@
+import { join, normalize, sep } from 'path';
+
+const ROOT = import.meta.dir;
+
 const server = Bun.serve({
   port: parseInt(process.env.PORT || '3000'),
   async fetch(req) {
     const url = new URL(req.url);
-    const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+    const safePath = normalize(decodeURIComponent(url.pathname));
+    const filePath = join(ROOT, safePath === '/' ? '/index.html' : safePath);
 
-    const file = Bun.file(import.meta.dir + filePath);
+    // Prevent path traversal outside project root
+    if (!filePath.startsWith(ROOT + sep) && filePath !== ROOT) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    const file = Bun.file(filePath);
     if (!(await file.exists())) {
       return new Response('Not found', { status: 404 });
     }

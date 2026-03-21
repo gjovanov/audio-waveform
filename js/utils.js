@@ -4,12 +4,17 @@
 
 const logEl = document.getElementById('log');
 
+const MAX_LOG_ENTRIES = 500;
+
 export function log(message, level = 'info') {
   const entry = document.createElement('div');
   entry.className = `log-entry ${level}`;
   const ts = new Date().toLocaleTimeString();
   entry.textContent = `[${ts}] ${message}`;
   logEl.appendChild(entry);
+  while (logEl.children.length > MAX_LOG_ENTRIES) {
+    logEl.removeChild(logEl.firstChild);
+  }
   logEl.scrollTop = logEl.scrollHeight;
   console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](message);
 }

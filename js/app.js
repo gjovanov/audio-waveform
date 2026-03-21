@@ -42,6 +42,8 @@ const audioPlayer = document.getElementById('audio-player');
 
 // ---- State ----
 let currentAudioURL = null;
+let processing = false;
+let animFrameId = null;
 const renderer = new WaveformRenderer(waveformCanvas, waveformContainer, cursorEl);
 
 // ---- File Upload ----
@@ -116,12 +118,18 @@ async function refreshFileList() {
 
   for (const meta of files) {
     const li = document.createElement('li');
-    li.innerHTML = `
-      <div class="file-info">
-        <span class="file-name">${meta.name}</span>
-        <span class="file-size">${formatBytes(meta.size)}</span>
-      </div>
-    `;
+
+    const fileInfo = document.createElement('div');
+    fileInfo.className = 'file-info';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'file-name';
+    nameSpan.textContent = meta.name;
+    const sizeSpan = document.createElement('span');
+    sizeSpan.className = 'file-size';
+    sizeSpan.textContent = formatBytes(meta.size);
+    fileInfo.appendChild(nameSpan);
+    fileInfo.appendChild(sizeSpan);
+    li.appendChild(fileInfo);
 
     const processBtn = document.createElement('button');
     processBtn.textContent = 'Extract & Visualize';
@@ -131,9 +139,13 @@ async function refreshFileList() {
     deleteBtn.className = 'danger';
     deleteBtn.textContent = 'Delete';
     deleteBtn.addEventListener('click', async () => {
-      await deleteFile(meta.id);
-      log(`Deleted: ${meta.name}`);
-      await refreshFileList();
+      try {
+        await deleteFile(meta.id);
+        log(`Deleted: ${meta.name}`);
+        await refreshFileList();
+      } catch (err) {
+        log(`Delete failed: ${err.message}`, 'error');
+      }
     });
 
     li.appendChild(processBtn);
@@ -145,6 +157,12 @@ async function refreshFileList() {
 // ---- Processing Pipeline ----
 
 async function processFile(meta) {
+  if (processing) {
+    log('Processing already in progress — please wait', 'warn');
+    return;
+  }
+  processing = true;
+
   show(processingSection);
   hide(waveformSection);
 
@@ -229,7 +247,8 @@ async function processFile(meta) {
     log('Processing complete!', 'success');
   } catch (err) {
     log(`Processing failed: ${err.message}`, 'error');
-    console.error(err);
+  } finally {
+    processing = false;
   }
 }
 
@@ -245,19 +264,26 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-audioPlayer.addEventListener('ended', () => {
-  playBtn.innerHTML = '&#9654; Play';
-});
-
-// Cursor animation
+// Cursor animation — only runs while playing to save battery
 function updatePlayback() {
-  if (!audioPlayer.paused) {
-    renderer.updateCursor(audioPlayer.currentTime);
-    timeDisplay.textContent = `${formatTime(audioPlayer.currentTime)} / ${formatTime(audioPlayer.duration || 0)}`;
-  }
-  requestAnimationFrame(updatePlayback);
+  renderer.updateCursor(audioPlayer.currentTime);
+  timeDisplay.textContent = `${formatTime(audioPlayer.currentTime)} / ${formatTime(audioPlayer.duration || 0)}`;
+  animFrameId = requestAnimationFrame(updatePlayback);
 }
-requestAnimationFrame(updatePlayback);
+
+function stopPlaybackLoop() {
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+  playBtn.innerHTML = '&#9654; Play';
+}
+
+audioPlayer.addEventListener('play', () => {
+  if (!animFrameId) animFrameId = requestAnimationFrame(updatePlayback);
+});
+audioPlayer.addEventListener('pause', stopPlaybackLoop);
+audioPlayer.addEventListener('ended', stopPlaybackLoop);
 
 // Zoom controls
 zoomInBtn.addEventListener('click', () => renderer.zoomIn());

@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './video',
-  timeout: 600_000, // 10 minutes
+  timeout: 1_800_000, // 30 minutes — processing a 3GB file through WASM is slow
   retries: 0,
   workers: 1,
   use: {

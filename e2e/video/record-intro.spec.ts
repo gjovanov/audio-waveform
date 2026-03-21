@@ -7,7 +7,7 @@
  *
  * Prerequisites:
  *   - Dev server running: bun server.bun.js (or node server.js)
- *   - A sample video file at e2e/video/sample.mp4 (small, ~50MB for demo speed)
+ *   - A sample video file at e2e/video/sample.mp4 (>2GB for full demo)
  *
  * Run:
  *   cd e2e
@@ -93,7 +93,8 @@ function delay(page: Page, ms: number) {
 
 test.describe('Audio Waveform Intro Video', () => {
   test('record full intro walkthrough', async ({ page }) => {
-    test.setTimeout(600_000) // 10 minutes max
+    // 30 minutes — processing a 3GB file through WASM takes time
+    test.setTimeout(1_800_000)
 
     // -----------------------------------------------------------------------
     // Scene 1: Landing — app title and subtitle
@@ -128,14 +129,14 @@ test.describe('Audio Waveform Intro Video', () => {
     await delay(page, 500)
 
     // -----------------------------------------------------------------------
-    // Scene 3: Upload a sample video file
+    // Scene 3: Upload a sample video file (3GB — chunked to IndexedDB)
     // -----------------------------------------------------------------------
     const sampleVideoPath = path.resolve(__dirname, 'sample.mp4')
     const fileInput = page.locator('#file-input')
     await fileInput.setInputFiles(sampleVideoPath)
 
-    // Wait for upload to complete (progress bar appears then file list shows)
-    await page.locator('#files-section').waitFor({ state: 'visible', timeout: 120_000 })
+    // 3GB file = 60 chunks × 50MB — allow up to 10 minutes for IndexedDB storage
+    await page.locator('#files-section').waitFor({ state: 'visible', timeout: 600_000 })
     await delay(page, 800)
 
     await injectOverlay(page)
@@ -150,7 +151,7 @@ test.describe('Audio Waveform Intro Video', () => {
     await extractBtn.click()
 
     // Wait for ffmpeg loading message in the log
-    await page.locator('#log .log-entry.success').first().waitFor({ timeout: 120_000 })
+    await page.locator('#log .log-entry.success').first().waitFor({ timeout: 300_000 })
     await delay(page, 500)
 
     await injectOverlay(page)
@@ -159,8 +160,9 @@ test.describe('Audio Waveform Intro Video', () => {
     // -----------------------------------------------------------------------
     // Scene 5: Audio extraction progress
     // -----------------------------------------------------------------------
-    // Wait for extraction to complete
-    await page.locator('#extract-status:has-text("Audio extracted")').waitFor({ timeout: 300_000 })
+    // 3GB file uses WORKERFS mount — extraction via stream copy should be fast
+    // but WASM I/O overhead can be significant
+    await page.locator('#extract-status:has-text("Audio extracted")').waitFor({ timeout: 600_000 })
     await delay(page, 500)
 
     await injectOverlay(page)
@@ -170,7 +172,7 @@ test.describe('Audio Waveform Intro Video', () => {
     // Scene 6: Downsampling progress
     // -----------------------------------------------------------------------
     // Wait for analysis phase
-    await page.locator('#analyze-progress').waitFor({ state: 'visible', timeout: 30_000 })
+    await page.locator('#analyze-progress').waitFor({ state: 'visible', timeout: 60_000 })
     await delay(page, 1000)
 
     await injectOverlay(page)
@@ -179,7 +181,8 @@ test.describe('Audio Waveform Intro Video', () => {
     // -----------------------------------------------------------------------
     // Scene 7: Peak extraction
     // -----------------------------------------------------------------------
-    await page.locator('#analyze-status:has-text("Analysis complete")').waitFor({ timeout: 300_000 })
+    // Downsampling 13 minutes of audio through WASM can take a while
+    await page.locator('#analyze-status:has-text("Analysis complete")').waitFor({ timeout: 600_000 })
     await delay(page, 500)
 
     await injectOverlay(page)
@@ -188,7 +191,7 @@ test.describe('Audio Waveform Intro Video', () => {
     // -----------------------------------------------------------------------
     // Scene 8: Waveform rendered — show the full visualization
     // -----------------------------------------------------------------------
-    await page.locator('#waveform-section').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('#waveform-section').waitFor({ state: 'visible', timeout: 30_000 })
     await delay(page, 1000)
 
     // Scroll to waveform section

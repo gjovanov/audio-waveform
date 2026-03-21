@@ -1,4 +1,4 @@
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a2e', 'primaryBorderColor': '#1565c0', 'lineColor': '#1565c0', 'secondaryColor': '#fff3e0', 'background': '#ffffff', 'nodeBorder': '#1565c0', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart LR
     AAC["AAC Audio<br/>~30-50 MB"] --> DS["Downsample<br/>16 kHz mono f32le"]
     DS --> PCM["Float32Array<br/>~460 MB for 2hr"]
@@ -6,9 +6,9 @@ flowchart LR
     PEAKS --> DATA["Peak Array<br/>~50 KB"]
     DATA --> CANVAS["Canvas Render<br/>Color-coded bars"]
 
-    style AAC fill:#e65100,color:#fff
-    style DS fill:#ff9800,color:#fff
-    style PCM fill:#ffa726,color:#1a1a2e
-    style PEAKS fill:#00695c,color:#fff
-    style DATA fill:#66bb6a,color:#1a1a2e
-    style CANVAS fill:#0f3460,color:#fff
+    style AAC fill:#fff3e0,stroke:#e65100,color:#1a1a2e
+    style DS fill:#fff3e0,stroke:#ff9800,color:#1a1a2e
+    style PCM fill:#fff8e1,stroke:#f9a825,color:#1a1a2e
+    style PEAKS fill:#e8f5e9,stroke:#2e7d32,color:#1a1a2e
+    style DATA fill:#e8f5e9,stroke:#43a047,color:#1a1a2e
+    style CANVAS fill:#e3f2fd,stroke:#0d47a1,color:#1a1a2e

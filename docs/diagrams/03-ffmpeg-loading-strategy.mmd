@@ -1,4 +1,4 @@
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a2e', 'primaryBorderColor': '#1565c0', 'lineColor': '#1565c0', 'secondaryColor': '#fff3e0', 'tertiaryColor': '#e8f5e9', 'background': '#ffffff', 'nodeBorder': '#1565c0', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart TD
     START["loadFFmpeg()"] --> TRY_MT["Try multi-threaded ESM build"]
     TRY_MT -->|"SharedArrayBuffer available"| MT_OK["Loaded: multi-threaded"]
@@ -8,6 +8,6 @@ flowchart TD
     MT_OK --> READY["ffmpeg ready"]
     ST_OK --> READY
 
-    style MT_OK fill:#66bb6a,color:#fff
-    style ST_OK fill:#ffa726,color:#fff
-    style READY fill:#4fc3f7,color:#1a1a2e
+    style MT_OK fill:#e8f5e9,stroke:#2e7d32,color:#1a1a2e
+    style ST_OK fill:#fff3e0,stroke:#e65100,color:#1a1a2e
+    style READY fill:#bbdefb,stroke:#1565c0,color:#1a1a2e

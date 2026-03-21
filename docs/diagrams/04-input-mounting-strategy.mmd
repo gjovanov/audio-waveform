@@ -1,4 +1,4 @@
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#e3f2fd', 'primaryTextColor': '#1a1a2e', 'primaryBorderColor': '#1565c0', 'lineColor': '#1565c0', 'secondaryColor': '#fff3e0', 'background': '#ffffff', 'nodeBorder': '#1565c0', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart TD
     INPUT["Input video Blob"] --> SIZE{"size > 1.5 GB?"}
 
@@ -10,6 +10,6 @@ flowchart TD
 
     EXTRACT --> OUTPUT["Audio Blob (~30-50 MB)"]
 
-    style SMALL fill:#4fc3f7,color:#1a1a2e
-    style LARGE fill:#ffa726,color:#1a1a2e
-    style OUTPUT fill:#66bb6a,color:#1a1a2e
+    style SMALL fill:#bbdefb,stroke:#1565c0,color:#1a1a2e
+    style LARGE fill:#fff3e0,stroke:#e65100,color:#1a1a2e
+    style OUTPUT fill:#e8f5e9,stroke:#2e7d32,color:#1a1a2e

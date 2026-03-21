@@ -1,0 +1,22 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+sequenceDiagram
+    participant User as User
+    participant App as app.js
+    participant FS as file-store.js
+    participant IDB as IndexedDB
+
+    User->>App: Drop 4.7 GB video
+    App->>App: Validate file type + check quota
+    App->>FS: storeFile(file, onProgress)
+
+    loop Every 50 MB chunk
+        FS->>FS: file.slice(start, end)
+        FS->>IDB: PUT chunk Blob (key: "abc123-0")
+        IDB-->>FS: stored
+        FS-->>App: progress(stored, total)
+    end
+
+    FS->>IDB: PUT metadata {id, name, size, chunkCount}
+    FS-->>App: metadata
+
+    Note over User,IDB: 94 chunks stored. File persists across page reloads.

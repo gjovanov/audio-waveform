@@ -1,0 +1,21 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+sequenceDiagram
+    participant User as User
+    participant Canvas as WaveformRenderer
+    participant Audio as audio Element
+    participant RAF as requestAnimationFrame
+
+    User->>Canvas: Click at x=400px
+    Canvas->>Canvas: time = (x / canvasWidth) × duration
+    Canvas->>Audio: audioPlayer.currentTime = time
+    Canvas->>Canvas: updateCursor(time)
+
+    loop Every Frame (60 FPS)
+        RAF->>Audio: read currentTime
+        RAF->>Canvas: updateCursor(currentTime)
+        Canvas->>Canvas: Position cursor, auto-scroll if needed
+    end
+
+    User->>Canvas: zoomIn()
+    Canvas->>Canvas: zoom *= 1.5
+    Canvas->>Canvas: render() — resize canvas, redraw all bars

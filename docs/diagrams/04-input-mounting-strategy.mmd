@@ -1,0 +1,15 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+flowchart TD
+    INPUT["Input video Blob"] --> SIZE{"size > 1.5 GB?"}
+
+    SIZE -->|"No"| SMALL["writeFile() to WASM heap<br/>(full copy, fast random access)"]
+    SIZE -->|"Yes"| LARGE["WORKERFS mount<br/>(on-demand reads, zero copy)"]
+
+    SMALL --> EXTRACT["ffmpeg -vn -c:a copy"]
+    LARGE --> EXTRACT
+
+    EXTRACT --> OUTPUT["Audio Blob (~30-50 MB)"]
+
+    style SMALL fill:#4fc3f7,color:#1a1a2e
+    style LARGE fill:#ffa726,color:#1a1a2e
+    style OUTPUT fill:#66bb6a,color:#1a1a2e

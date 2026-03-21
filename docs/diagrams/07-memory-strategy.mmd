@@ -1,0 +1,34 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+graph LR
+    subgraph Upload["Phase 1: Upload"]
+        U1["File object<br/>~0 bytes (disk ref)"]
+        U2["Per chunk<br/>~50 MB (transient)"]
+    end
+
+    subgraph Store["Phase 2: Storage"]
+        S1["IndexedDB<br/>disk-backed"]
+    end
+
+    subgraph Extract["Phase 3: Extraction"]
+        E1{"Size > 1.5 GB?"}
+        E2["writeFile<br/>≤1.5 GB in WASM heap"]
+        E3["WORKERFS<br/>~0 bytes in heap"]
+        E4["Audio output<br/>~30-50 MB"]
+    end
+
+    subgraph Analyze["Phase 4: Analysis"]
+        A1["Float32Array<br/>≤460 MB"]
+        A2["Peaks array<br/>~50 KB"]
+    end
+
+    U1 --> U2 --> S1
+    S1 --> E1
+    E1 -->|"No"| E2 --> E4
+    E1 -->|"Yes"| E3 --> E4
+    E4 --> A1 --> A2
+
+    style U2 fill:#ffa726,color:#1a1a2e
+    style E2 fill:#ef5350,color:#fff
+    style E3 fill:#66bb6a,color:#1a1a2e
+    style A1 fill:#ffa726,color:#1a1a2e
+    style A2 fill:#4fc3f7,color:#1a1a2e

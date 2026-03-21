@@ -1,0 +1,34 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460', 'tertiaryColor': '#16213e'}}}%%
+graph TB
+    subgraph Browser["Browser (zero server-side processing)"]
+        UI["Vanilla JS SPA<br/>Drag-and-drop · Controls · Log"]
+        IDB[("IndexedDB<br/>50 MB Blob chunks")]
+        FFMPEG["ffmpeg.wasm 0.12<br/>WebAssembly · WORKERFS"]
+        ANALYZER["Audio Analyzer<br/>Peak extraction from PCM"]
+        CANVAS["Canvas Renderer<br/>Waveform · Cursor · Zoom"]
+        AUDIO["&lt;audio&gt; Element<br/>Playback · Seek"]
+    end
+
+    subgraph Server["Dev Server (static files only)"]
+        NODE["Node.js / Bun<br/>COOP + COEP headers"]
+        FILES["Static Files<br/>HTML · JS · CSS · WASM"]
+    end
+
+    UI -->|"File.slice()"| IDB
+    IDB -->|"Blob reassembly"| FFMPEG
+    FFMPEG -->|"-vn -c:a copy"| FFMPEG
+    FFMPEG -->|"AAC audio Blob"| ANALYZER
+    FFMPEG -->|"16kHz mono f32le"| ANALYZER
+    ANALYZER -->|"peaks [{min,max}]"| CANVAS
+    UI -->|"click-to-seek"| AUDIO
+    AUDIO -->|"currentTime"| CANVAS
+    NODE --> FILES
+
+    style UI fill:#4fc3f7,color:#1a1a2e
+    style IDB fill:#78909c,color:#fff
+    style FFMPEG fill:#e65100,color:#fff
+    style ANALYZER fill:#00695c,color:#fff
+    style CANVAS fill:#0f3460,color:#fff
+    style AUDIO fill:#1565c0,color:#fff
+    style NODE fill:#ff9800,color:#fff
+    style FILES fill:#78909c,color:#fff

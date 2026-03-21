@@ -1,0 +1,13 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+flowchart TD
+    START["loadFFmpeg()"] --> TRY_MT["Try multi-threaded ESM build"]
+    TRY_MT -->|"SharedArrayBuffer available"| MT_OK["Loaded: multi-threaded"]
+    TRY_MT -->|"Error: no SAB"| FALLBACK["Try single-threaded UMD build"]
+    FALLBACK --> ST_OK["Loaded: single-threaded (3-5x slower)"]
+
+    MT_OK --> READY["ffmpeg ready"]
+    ST_OK --> READY
+
+    style MT_OK fill:#66bb6a,color:#fff
+    style ST_OK fill:#ffa726,color:#fff
+    style READY fill:#4fc3f7,color:#1a1a2e

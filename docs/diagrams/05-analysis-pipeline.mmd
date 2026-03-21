@@ -1,0 +1,14 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1a1a2e', 'primaryTextColor': '#eee', 'primaryBorderColor': '#16213e', 'lineColor': '#4fc3f7', 'secondaryColor': '#0f3460'}}}%%
+flowchart LR
+    AAC["AAC Audio<br/>~30-50 MB"] --> DS["Downsample<br/>16 kHz mono f32le"]
+    DS --> PCM["Float32Array<br/>~460 MB for 2hr"]
+    PCM --> PEAKS["Peak Extraction<br/>min/max per pixel"]
+    PEAKS --> DATA["Peak Array<br/>~50 KB"]
+    DATA --> CANVAS["Canvas Render<br/>Color-coded bars"]
+
+    style AAC fill:#e65100,color:#fff
+    style DS fill:#ff9800,color:#fff
+    style PCM fill:#ffa726,color:#1a1a2e
+    style PEAKS fill:#00695c,color:#fff
+    style DATA fill:#66bb6a,color:#1a1a2e
+    style CANVAS fill:#0f3460,color:#fff

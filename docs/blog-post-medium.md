@@ -4,6 +4,12 @@
 
 ---
 
+[![Audio Waveform Demo](https://img.youtube.com/vi/nZe-znRpLik/maxresdefault.jpg)](https://youtu.be/nZe-znRpLik)
+
+> Watch the demo: a **3 GB MP4** processed entirely in the browser — [youtu.be/nZe-znRpLik](https://youtu.be/nZe-znRpLik)
+
+---
+
 So here's the thing. I had a 4.7 GB MKV file. A 3-hour conference recording. I needed to find the exact timestamp where the speaker said "we're pivoting to blockchain" so I could clip it and send it to everyone as evidence of corporate insanity.
 
 Every online tool either had a 500 MB upload limit, wanted me to create an account, or uploaded my file to some random server. "Don't worry, we delete it after processing!" Sure you do, random-video-converter.io. Sure you do.
@@ -31,7 +37,41 @@ The pieces existed: [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm) run
 
 ## Architecture
 
-![Architecture Overview](diagrams/01-architecture-overview.png)
+```mermaid
+graph TB
+    subgraph Browser["Browser (zero server-side processing)"]
+        UI["Vanilla JS SPA<br/>Drag-and-drop · Controls · Log"]
+        IDB[("IndexedDB<br/>50 MB Blob chunks")]
+        FFMPEG["ffmpeg.wasm 0.12<br/>WebAssembly · WORKERFS"]
+        ANALYZER["Audio Analyzer<br/>Peak extraction from PCM"]
+        CANVAS["Canvas Renderer<br/>Waveform · Cursor · Zoom"]
+        AUDIO["&lt;audio&gt; Element<br/>Playback · Seek"]
+    end
+
+    subgraph Server["Dev Server (static files only)"]
+        NODE["Node.js / Bun<br/>COOP + COEP headers"]
+        FILES["Static Files<br/>HTML · JS · CSS · WASM"]
+    end
+
+    UI -->|"File.slice()"| IDB
+    IDB -->|"Blob reassembly"| FFMPEG
+    FFMPEG -->|"-vn -c:a copy"| FFMPEG
+    FFMPEG -->|"AAC audio Blob"| ANALYZER
+    FFMPEG -->|"16kHz mono f32le"| ANALYZER
+    ANALYZER -->|"peaks [{min,max}]"| CANVAS
+    UI -->|"click-to-seek"| AUDIO
+    AUDIO -->|"currentTime"| CANVAS
+    NODE --> FILES
+
+    style UI fill:#4fc3f7,color:#1a1a2e
+    style IDB fill:#78909c,color:#fff
+    style FFMPEG fill:#e65100,color:#fff
+    style ANALYZER fill:#00695c,color:#fff
+    style CANVAS fill:#0f3460,color:#fff
+    style AUDIO fill:#1565c0,color:#fff
+    style NODE fill:#ff9800,color:#fff
+    style FILES fill:#78909c,color:#fff
+```
 
 The "server" in this diagram is a liar. It serves static files. That's it. HTML, JS, CSS, and WASM binaries. Your video data never touches it. The server's only real job is setting two HTTP headers. Two. That's its entire personality.
 
@@ -59,7 +99,29 @@ A 5 GB `File` object is fine — the browser holds a reference to it on disk. Bu
 
 The solution: don't. Never load the whole file into memory. Instead, slice it into 50 MB chunks and stuff them into IndexedDB.
 
-![Chunked Storage Flow](diagrams/02-chunked-storage-flow.png)
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant App as app.js
+    participant FS as file-store.js
+    participant IDB as IndexedDB
+
+    User->>App: Drop 4.7 GB video
+    App->>App: Validate file type + check quota
+    App->>FS: storeFile(file, onProgress)
+
+    loop Every 50 MB chunk
+        FS->>FS: file.slice(start, end)
+        FS->>IDB: PUT chunk Blob (key: "abc123-0")
+        IDB-->>FS: stored
+        FS-->>App: progress(stored, total)
+    end
+
+    FS->>IDB: PUT metadata {id, name, size, chunkCount}
+    FS-->>App: metadata
+
+    Note over User,IDB: 94 chunks stored. File persists across page reloads.
+```
 
 Why 50 MB chunks?
 
@@ -79,7 +141,20 @@ But using it with large files has... nuances.
 
 ### Loading: Multi-Threaded With Fallback
 
-![ffmpeg Loading Strategy](diagrams/03-ffmpeg-loading-strategy.png)
+```mermaid
+flowchart TD
+    START["loadFFmpeg()"] --> TRY_MT["Try multi-threaded ESM build"]
+    TRY_MT -->|"SharedArrayBuffer available"| MT_OK["Loaded: multi-threaded"]
+    TRY_MT -->|"Error: no SAB"| FALLBACK["Try single-threaded UMD build"]
+    FALLBACK --> ST_OK["Loaded: single-threaded (3-5x slower)"]
+
+    MT_OK --> READY["ffmpeg ready"]
+    ST_OK --> READY
+
+    style MT_OK fill:#66bb6a,color:#fff
+    style ST_OK fill:#ffa726,color:#fff
+    style READY fill:#4fc3f7,color:#1a1a2e
+```
 
 Multi-threaded ffmpeg.wasm requires `SharedArrayBuffer`, which requires COOP/COEP headers. That's why the "server" exists — to set those two headers. Two headers. That's the entire reason there's a server.js file. I've written longer commit messages.
 
@@ -89,7 +164,22 @@ Here's where it gets interesting. ffmpeg.wasm has a virtual filesystem. You can 
 
 So for files > 1.5 GB, we use WORKERFS — an Emscripten virtual filesystem that mounts a browser `Blob` as a read-only file. ffmpeg reads from it on demand via `file.slice()`. No full copy into memory.
 
-![Input Mounting Strategy](diagrams/04-input-mounting-strategy.png)
+```mermaid
+flowchart TD
+    INPUT["Input video Blob"] --> SIZE{"size > 1.5 GB?"}
+
+    SIZE -->|"No"| SMALL["writeFile() to WASM heap<br/>(full copy, fast random access)"]
+    SIZE -->|"Yes"| LARGE["WORKERFS mount<br/>(on-demand reads, zero copy)"]
+
+    SMALL --> EXTRACT["ffmpeg -vn -c:a copy"]
+    LARGE --> EXTRACT
+
+    EXTRACT --> OUTPUT["Audio Blob (~30-50 MB)"]
+
+    style SMALL fill:#4fc3f7,color:#1a1a2e
+    style LARGE fill:#ffa726,color:#1a1a2e
+    style OUTPUT fill:#66bb6a,color:#1a1a2e
+```
 
 The 1.5 GB threshold is conservative. Some browsers handle `arrayBuffer()` up to 2 GB. But "some browsers" is not a reliability strategy. 1.5 GB gives us a safety margin.
 
@@ -112,7 +202,21 @@ This is the kind of optimization where you feel like you're cheating. You're not
 
 Once we have the audio, we need to turn it into something visual:
 
-![Analysis Pipeline](diagrams/05-analysis-pipeline.png)
+```mermaid
+flowchart LR
+    AAC["AAC Audio<br/>~30-50 MB"] --> DS["Downsample<br/>16 kHz mono f32le"]
+    DS --> PCM["Float32Array<br/>~460 MB for 2hr"]
+    PCM --> PEAKS["Peak Extraction<br/>min/max per pixel"]
+    PEAKS --> DATA["Peak Array<br/>~50 KB"]
+    DATA --> CANVAS["Canvas Render<br/>Color-coded bars"]
+
+    style AAC fill:#e65100,color:#fff
+    style DS fill:#ff9800,color:#fff
+    style PCM fill:#ffa726,color:#1a1a2e
+    style PEAKS fill:#00695c,color:#fff
+    style DATA fill:#66bb6a,color:#1a1a2e
+    style CANVAS fill:#0f3460,color:#fff
+```
 
 ### Downsampling
 
@@ -149,7 +253,28 @@ The renderer is device-pixel-ratio aware. On a 2x Retina display, the canvas is 
 
 You can zoom from 0.1x (entire track as a thin line) to 50x (individual peaks fill the screen). The red cursor follows playback at 60 FPS via `requestAnimationFrame`. Click anywhere on the waveform to seek. The container auto-scrolls to keep the cursor visible.
 
-![Playback Sync](diagrams/06-playback-sync.png)
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant Canvas as WaveformRenderer
+    participant Audio as <audio> Element
+    participant RAF as requestAnimationFrame
+
+    User->>Canvas: Click at x=400px
+    Canvas->>Canvas: time = (x / canvasWidth) × duration
+    Canvas->>Audio: audioPlayer.currentTime = time
+    Canvas->>Canvas: updateCursor(time)
+
+    loop Every Frame (60 FPS)
+        RAF->>Audio: read currentTime
+        RAF->>Canvas: updateCursor(currentTime)
+        Canvas->>Canvas: Position cursor, auto-scroll if needed
+    end
+
+    User->>Canvas: zoomIn()
+    Canvas->>Canvas: zoom *= 1.5
+    Canvas->>Canvas: render() — resize canvas, redraw all bars
+```
 
 The zoom is multiplicative (1.5x per click). This feels natural — each zoom step shows roughly 50% more detail. Logarithmic zoom would be more mathematically elegant, but "click click click, oh there's the bass drop" is the actual user experience I was designing for.
 
@@ -159,9 +284,43 @@ The zoom is multiplicative (1.5x per click). This feels natural — each zoom st
 
 This was the hardest engineering problem. Here's the full memory breakdown:
 
-![Memory Strategy](diagrams/07-memory-strategy.png)
+```mermaid
+graph LR
+    subgraph Upload["Phase 1: Upload"]
+        U1["File object<br/>~0 bytes (disk ref)"]
+        U2["Per chunk<br/>~50 MB (transient)"]
+    end
 
-Peak memory usage for a 5 GB file: ~280 MB (audio output + downsampled PCM). For a 1 GB file: ~80 MB. For a 100 MB file: ~15 MB. The ffmpeg instance is terminated after analysis to free the WASM heap.
+    subgraph Store["Phase 2: Storage"]
+        S1["IndexedDB<br/>disk-backed"]
+    end
+
+    subgraph Extract["Phase 3: Extraction"]
+        E1{"Size > 1.5 GB?"}
+        E2["writeFile<br/>≤1.5 GB in WASM heap"]
+        E3["WORKERFS<br/>~0 bytes in heap"]
+        E4["Audio output<br/>~30-50 MB"]
+    end
+
+    subgraph Analyze["Phase 4: Analysis"]
+        A1["Float32Array<br/>≤460 MB"]
+        A2["Peaks array<br/>~50 KB"]
+    end
+
+    U1 --> U2 --> S1
+    S1 --> E1
+    E1 -->|"No"| E2 --> E4
+    E1 -->|"Yes"| E3 --> E4
+    E4 --> A1 --> A2
+
+    style U2 fill:#ffa726,color:#1a1a2e
+    style E2 fill:#ef5350,color:#fff
+    style E3 fill:#66bb6a,color:#1a1a2e
+    style A1 fill:#ffa726,color:#1a1a2e
+    style A2 fill:#4fc3f7,color:#1a1a2e
+```
+
+Peak memory usage for a 5 GB file: ~510 MB (audio output + downsampled PCM at 16 kHz). For a 1 GB file: ~150 MB. For a 100 MB file: ~15 MB. The ffmpeg instance is terminated after analysis to free the WASM heap.
 
 Without WORKERFS? A 5 GB file would need 5 GB in WASM heap memory. The browser would tab-crash faster than you can say "out of memory."
 
@@ -169,15 +328,26 @@ Without WORKERFS? A 5 GB file would need 5 GB in WASM heap memory. The browser w
 
 ## The Two-Header Server
 
-The entire server is 23 lines ([Bun](https://bun.sh/) version):
+The entire server is ~30 lines ([Bun](https://bun.sh/) version) including path traversal protection:
 
 ```javascript
+import { join, normalize, sep } from 'path';
+
+const ROOT = import.meta.dir;
+
 const server = Bun.serve({
-  port: 3000,
+  port: parseInt(process.env.PORT || '3000'),
   async fetch(req) {
     const url = new URL(req.url);
-    const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
-    const file = Bun.file(import.meta.dir + filePath);
+    const safePath = normalize(decodeURIComponent(url.pathname));
+    const filePath = join(ROOT, safePath === '/' ? '/index.html' : safePath);
+
+    // Prevent path traversal
+    if (!filePath.startsWith(ROOT + sep) && filePath !== ROOT) {
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    const file = Bun.file(filePath);
     if (!(await file.exists())) {
       return new Response('Not found', { status: 404 });
     }

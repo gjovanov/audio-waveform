@@ -4,6 +4,12 @@
 
 ---
 
+[![Audio Waveform Demo](https://img.youtube.com/vi/nZe-znRpLik/maxresdefault.jpg)](https://youtu.be/nZe-znRpLik)
+
+> Watch the demo: a **3 GB MP4** processed entirely in the browser — [youtu.be/nZe-znRpLik](https://youtu.be/nZe-znRpLik)
+
+---
+
 So here's the thing. I had a 4.7 GB MKV file. A 3-hour conference recording. I needed to find the exact timestamp where the speaker said "we're pivoting to blockchain" so I could clip it and send it to everyone as evidence of corporate insanity.
 
 Every online tool either had a 500 MB upload limit, wanted me to create an account, or uploaded my file to some random server. "Don't worry, we delete it after processing!" Sure you do, random-video-converter.io. Sure you do.

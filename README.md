@@ -6,6 +6,8 @@ Browser-only audio extraction and waveform visualization from large video files.
 
 ## Demo
 
+[![Audio Waveform Demo](https://img.youtube.com/vi/nZe-znRpLik/maxresdefault.jpg)](https://youtu.be/nZe-znRpLik)
+
 https://github.com/gjovanov/audio-waveform/raw/master/audio-waveform-intro.mp4
 
 > Drop a video, extract audio, visualize the waveform — all in the browser. Zero server processing. Your files never leave your machine.
